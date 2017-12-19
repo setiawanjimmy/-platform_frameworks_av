@@ -56,7 +56,6 @@ Camera3Stream::Camera3Stream(int id,
     mState(STATE_CONSTRUCTED),
     mStatusId(StatusTracker::NO_STATUS_ID),
     mStreamUnpreparable(true),
-    mUsage(0),
     mOldUsage(0),
     mOldMaxBuffers(0),
     mPrepared(false),
@@ -72,6 +71,7 @@ Camera3Stream::Camera3Stream(int id,
     camera3_stream::format = format;
     camera3_stream::data_space = dataSpace;
     camera3_stream::rotation = rotation;
+    camera3_stream::usage = 0;
     camera3_stream::max_buffers = 0;
     camera3_stream::priv = NULL;
 
@@ -104,14 +104,6 @@ int Camera3Stream::getFormat() const {
 
 android_dataspace Camera3Stream::getDataSpace() const {
     return camera3_stream::data_space;
-}
-
-uint64_t Camera3Stream::getUsage() const {
-    return mUsage;
-}
-
-void Camera3Stream::setUsage(uint64_t usage) {
-    mUsage = usage;
 }
 
 void Camera3Stream::setFormatOverride(bool formatOverridden) {
@@ -169,10 +161,10 @@ camera3_stream* Camera3Stream::startConfiguration() {
             return NULL;
     }
 
-    mOldUsage = mUsage;
+    mOldUsage = camera3_stream::usage;
     mOldMaxBuffers = camera3_stream::max_buffers;
 
-    res = getEndpointUsage(&mUsage);
+    res = getEndpointUsage(&(camera3_stream::usage));
     if (res != OK) {
         ALOGE("%s: Cannot query consumer endpoint usage!",
                 __FUNCTION__);
@@ -233,7 +225,7 @@ status_t Camera3Stream::finishConfiguration() {
     // Check if the stream configuration is unchanged, and skip reallocation if
     // so. As documented in hardware/camera3.h:configure_streams().
     if (mState == STATE_IN_RECONFIG &&
-            mOldUsage == mUsage &&
+            mOldUsage == camera3_stream::usage &&
             mOldMaxBuffers == camera3_stream::max_buffers) {
         mState = STATE_CONFIGURED;
         return OK;
@@ -279,7 +271,7 @@ status_t Camera3Stream::cancelConfiguration() {
             return INVALID_OPERATION;
     }
 
-    mUsage = mOldUsage;
+    camera3_stream::usage = mOldUsage;
     camera3_stream::max_buffers = mOldMaxBuffers;
 
     mState = (mState == STATE_IN_RECONFIG) ? STATE_CONFIGURED : STATE_CONSTRUCTED;
